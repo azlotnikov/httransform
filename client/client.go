@@ -98,9 +98,7 @@ func (c *Client) do(req *fasthttp.Request, resp *fasthttp.Response, readTimeout,
 		return xerrors.Errorf("cannot set read deadline: %w", err)
 	}
 
-	connReader := poolBufferedReader.Get().(*bufio.Reader)
-	connReader.Reset(conn)
-
+	connReader := bufio.NewReader(conn)
 	if err = resp.Header.Read(connReader); err != nil {
 		return xerrors.Errorf("cannot read response header: %w", err)
 	}

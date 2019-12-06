@@ -63,8 +63,6 @@ func (b *baseReader) releaseConn() {
 	} else if !b.closed {
 		b.dialer.Release(b.conn, b.addr)
 		b.closed = true
-		b.reader.Reset(nil)
-		poolBufferedReader.Put(b.reader)
 	}
 }
 
@@ -73,8 +71,6 @@ func (b *baseReader) closeConn() {
 		b.conn.Close()
 		b.dialer.NotifyClosed(b.addr)
 		b.closed = true
-		b.reader.Reset(nil)
-		poolBufferedReader.Put(b.reader)
 	}
 }
 
