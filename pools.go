@@ -1,7 +1,6 @@
 package httransform
 
 import (
-	"bytes"
 	"sync"
 )
 
@@ -11,12 +10,6 @@ var (
 			return &LayerState{
 				ctx: make(map[string]interface{}),
 			}
-		},
-	}
-
-	connectRequestBufferPool = sync.Pool{
-		New: func() interface{} {
-			return &bytes.Buffer{}
 		},
 	}
 )

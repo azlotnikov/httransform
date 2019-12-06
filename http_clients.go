@@ -224,9 +224,7 @@ func makeCONNECTBaseDialer(proxyURL *url.URL, base client.BaseDialer) client.Bas
 			addr = net.JoinHostPort(addr, "443")
 		}
 
-		connectRequest := connectRequestBufferPool.Get().(*bytes.Buffer)
-		connectRequest.Reset()
-		defer connectRequestBufferPool.Put(connectRequest)
+		connectRequest := &bytes.Buffer{}
 
 		connectRequest.Write([]byte("CONNECT "))
 		connectRequest.WriteString(addr)
