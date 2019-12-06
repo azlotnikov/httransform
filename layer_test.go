@@ -30,8 +30,7 @@ func (suite *BaseLayerStateTestSuite) SetupTest() {
 	user := []byte("user")
 	password := []byte("password")
 
-	suite.state = getLayerState()
-	initLayerState(suite.state, ctx, requestHeaderSet, responseHeaderSet, true, user, password)
+	suite.state = NewLayerState(ctx, requestHeaderSet, responseHeaderSet, true, user, password)
 }
 
 type LayerStateTestSuite struct {

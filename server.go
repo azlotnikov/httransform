@@ -142,15 +142,12 @@ func (s *Server) handleRequest(ctx *fasthttp.RequestCtx, isConnect bool, user, p
 		return
 	}
 
-	state := getLayerState()
 	layerTracer := s.tracerPool.acquire()
-
-	initLayerState(state, ctx, requestHeaders, responseHeaders, isConnect, user, password)
+	state := NewLayerState(ctx, requestHeaders, responseHeaders, isConnect, user, password)
 
 	defer func() {
 		layerTracer.Dump(state, s.logger)
 		s.tracerPool.release(layerTracer)
-		releaseLayerState(state)
 	}()
 
 	for ; currentLayer < len(s.layers); currentLayer++ {

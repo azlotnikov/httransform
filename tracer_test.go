@@ -158,7 +158,6 @@ func (suite *LogTracerTestSuite) TestDump() {
 	suite.tracer.FinishOnResponse()
 	suite.tracer.Clear()
 
-	state := getLayerState()
 	req := fasthttp.AcquireRequest()
 	resp := fasthttp.AcquireResponse()
 
@@ -174,7 +173,7 @@ func (suite *LogTracerTestSuite) TestDump() {
 	responseHeaderSet := NewHeaderSet()
 	user := []byte("user")
 	password := []byte("password")
-	initLayerState(state, ctx, requestHeaderSet, responseHeaderSet, true, user, password)
+	state := NewLayerState(ctx, requestHeaderSet, responseHeaderSet, true, user, password)
 
 	suite.tracer.Dump(state, &NoopLogger{})
 }

@@ -111,18 +111,20 @@ func (l *LayerState) Delete(key string) {
 	delete(l.ctx, key)
 }
 
-func initLayerState(state *LayerState, ctx *fasthttp.RequestCtx,
-	requestHeaders, responseHeaders *HeaderSet,
-	isConnect bool, user, password []byte) {
-	state.RequestID = ctx.ID()
-	state.RequestHeaders = requestHeaders
-	state.ResponseHeaders = responseHeaders
-	state.Request = &ctx.Request
-	state.Response = &ctx.Response
-	state.isConnect = isConnect
-	state.RemoteAddr = ctx.RemoteAddr()
-	state.ProxyUser = user
-	state.ProxyPassword = password
+// NewLayerState creates and initializes new LayerState instance.
+func NewLayerState(ctx *fasthttp.RequestCtx, requestHeaders, responseHeaders *HeaderSet, isConnect bool, user, password []byte) *LayerState {
+	return &LayerState{
+		ctx:             make(map[string]interface{}),
+		RequestID:       ctx.ID(),
+		RequestHeaders:  requestHeaders,
+		ResponseHeaders: responseHeaders,
+		Request:         &ctx.Request,
+		Response:        &ctx.Response,
+		isConnect:       isConnect,
+		RemoteAddr:      ctx.RemoteAddr(),
+		ProxyUser:       append([]byte(nil), user...),
+		ProxyPassword:   append([]byte(nil), password...),
+	}
 }
 
 // AddRemoveHeaderLayer is the generic layer to manage request/response
