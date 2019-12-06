@@ -8,7 +8,7 @@ import (
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/binary"
-	"hash"
+	"hash/fnv"
 	"math/big"
 	"math/rand"
 	"net"
@@ -54,7 +54,7 @@ type CA struct {
 	ca           tls.Certificate
 	orgNames     []string
 	secret       []byte
-	requestChans []chan *signRequest
+	requestChans []chan signRequest
 	cache        *ccache.Cache
 	wg           *sync.WaitGroup
 	metrics      CertificateMetrics
@@ -65,15 +65,13 @@ func (c *CA) Get(host string) (TLSConfig, error) {
 	item := c.cache.TrackingGet(host)
 
 	if item == ccache.NilTracked {
-		newRequest := signRequestPool.Get().(*signRequest)
-		defer signRequestPool.Put(newRequest)
+		channelResponse := make(chan signResponse)
+		c.getWorkerChan(host) <- signRequest{
+			host:     host,
+			response: channelResponse,
+		}
 
-		newRequest.host = host
-		c.getWorkerChan(host) <- newRequest
-		response := <-newRequest.response
-
-		defer signResponsePool.Put(response)
-
+		response := <-channelResponse
 		if response.err != nil {
 			return TLSConfig{}, xerrors.Errorf("cannot create TLS certificate for host %s: %w",
 				host, response.err)
@@ -98,24 +96,27 @@ func (c *CA) Close() error {
 	return nil
 }
 
-func (c *CA) worker(requests chan *signRequest, wg *sync.WaitGroup) {
+func (c *CA) worker(requests chan signRequest, wg *sync.WaitGroup) {
 	defer wg.Done()
 
 	for req := range requests {
-		resp := signResponsePool.Get().(*signResponse)
-		resp.err = nil
+		resp := signResponse{}
 
 		if item := c.cache.TrackingGet(req.host); item != ccache.NilTracked {
-			resp.item = item
-			req.response <- resp
+			req.response <- signResponse{
+				item: item,
+			}
+			close(req.response)
 
 			continue
 		}
 
 		cert, err := c.sign(req.host)
 		if err != nil {
-			resp.err = err
-			req.response <- resp
+			req.response <- signResponse{
+				err: err,
+			}
+			close(req.response)
 
 			continue
 		}
@@ -176,12 +177,12 @@ func (c *CA) sign(host string) (tls.Certificate, error) {
 	}, nil
 }
 
-func (c *CA) getWorkerChan(host string) chan<- *signRequest {
-	newHash := hashPool.Get().(hash.Hash32)
-	newHash.Reset()
-	newHash.Write([]byte(host)) // nolint: errcheck
-	chanNumber := newHash.Sum32() % certWorkerCount
-	hashPool.Put(newHash)
+func (c *CA) getWorkerChan(host string) chan<- signRequest {
+	hashed := fnv.New32a()
+
+	hashed.Write([]byte(host)) // nolint: errcheck
+
+	chanNumber := hashed.Sum32() % certWorkerCount
 
 	return c.requestChans[chanNumber]
 }
@@ -209,12 +210,12 @@ func NewCA(certCA, certKey []byte, metrics CertificateMetrics,
 		secret:       certKey,
 		orgNames:     orgNames,
 		cache:        ccache.New(ccacheConf),
-		requestChans: make([]chan *signRequest, 0, certWorkerCount),
+		requestChans: make([]chan signRequest, 0, certWorkerCount),
 		wg:           &sync.WaitGroup{},
 	}
 
 	for i := 0; i < int(certWorkerCount); i++ {
-		newChan := make(chan *signRequest)
+		newChan := make(chan signRequest)
 		obj.requestChans = append(obj.requestChans, newChan)
 		obj.wg.Add(1)
 
