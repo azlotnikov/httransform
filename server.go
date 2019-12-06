@@ -128,17 +128,11 @@ func (s *Server) handleRequest(ctx *fasthttp.RequestCtx, isConnect bool, user, p
 	methodBytes := ctx.Method()
 	method := string(methodBytes)
 	uri := string(ctx.RequestURI())
+	requestHeaders := NewHeaderSet()
+	responseHeaders := NewHeaderSet()
 
 	newMethodMetricsValue(s.metrics, methodBytes)
-
-	requestHeaders := getHeaderSet()
-	responseHeaders := getHeaderSet()
-
-	defer func() {
-		releaseHeaderSet(requestHeaders)
-		releaseHeaderSet(responseHeaders)
-		dropMethodMetricsValue(s.metrics, methodBytes)
-	}()
+	defer dropMethodMetricsValue(s.metrics, methodBytes)
 
 	if err = ParseHeaders(requestHeaders, ctx.Request.Header.Header()); err != nil {
 		s.logDebug("[%s] (%d) %s %s: malformed request headers: %s",

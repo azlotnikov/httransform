@@ -25,8 +25,8 @@ func (suite *BaseLayerStateTestSuite) SetupTest() {
 		Request:  *req,  // nolint: govet
 		Response: *resp, // nolint: govet
 	}
-	requestHeaderSet := getHeaderSet()
-	responseHeaderSet := getHeaderSet()
+	requestHeaderSet := NewHeaderSet()
+	responseHeaderSet := NewHeaderSet()
 	user := []byte("user")
 	password := []byte("password")
 

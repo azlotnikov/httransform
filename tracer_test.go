@@ -170,8 +170,8 @@ func (suite *LogTracerTestSuite) TestDump() {
 		Request:  *req,  // nolint: govet
 		Response: *resp, // nolint: govet
 	}
-	requestHeaderSet := getHeaderSet()
-	responseHeaderSet := getHeaderSet()
+	requestHeaderSet := NewHeaderSet()
+	responseHeaderSet := NewHeaderSet()
 	user := []byte("user")
 	password := []byte("password")
 	initLayerState(state, ctx, requestHeaderSet, responseHeaderSet, true, user, password)

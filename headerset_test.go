@@ -15,13 +15,9 @@ type HeaderSetTestSuite struct {
 }
 
 func (suite *HeaderSetTestSuite) SetupTest() {
-	suite.set = getHeaderSet()
+	suite.set = NewHeaderSet()
 	suite.bytesKey = []byte("BytesKey")
 	suite.strKey = "StrKey"
-}
-
-func (suite *HeaderSetTestSuite) TearDownTest() {
-	releaseHeaderSet(suite.set)
 }
 
 func (suite *HeaderSetTestSuite) TestEmptyGet() {
@@ -142,11 +138,7 @@ type ParseHeadersTestSuite struct {
 }
 
 func (suite *ParseHeadersTestSuite) SetupTest() {
-	suite.set = getHeaderSet()
-}
-
-func (suite *ParseHeadersTestSuite) TearDownTest() {
-	releaseHeaderSet(suite.set)
+	suite.set = NewHeaderSet()
 }
 
 func (suite *ParseHeadersTestSuite) TestEmpty() {

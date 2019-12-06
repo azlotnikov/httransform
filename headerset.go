@@ -67,27 +67,16 @@ func (hs *HeaderSet) SetString(key, value string) {
 
 // SetBytes is the version of SetString which works with bytes.
 func (hs *HeaderSet) SetBytes(key []byte, value []byte) {
-	if hs.index == nil {
-		hs.index = map[string]int{}
-	}
-
-	if hs.values == nil {
-		hs.values = []*Header{}
-	}
-
-	if hs.removedHeaders == nil {
-		hs.removedHeaders = map[string]struct{}{}
-	}
-
 	lowerKey := string(bytes.ToLower(key))
 
 	if position, ok := hs.index[lowerKey]; ok {
 		hs.values[position].Value = value
 	} else {
-		newHeader := getHeader()
-		newHeader.ID = lowerKey
-		newHeader.Key = append(newHeader.Key, key...)
-		newHeader.Value = append(newHeader.Value, value...)
+		newHeader := &Header{
+			ID:    lowerKey,
+			Key:   key,
+			Value: value,
+		}
 		hs.values = append(hs.values, newHeader)
 		hs.index[lowerKey] = len(hs.values) - 1
 	}
@@ -166,21 +155,12 @@ func (hs *HeaderSet) String() string {
 	return builder.String()
 }
 
-// Clear drops internal state of the headerset.
-func (hs *HeaderSet) Clear() {
-	for k := range hs.index {
-		delete(hs.index, k)
+// NewHeaderSet creates and initializes new headerset.
+func NewHeaderSet() *HeaderSet {
+	return &HeaderSet{
+		index:          make(map[string]int),
+		removedHeaders: make(map[string]struct{}),
 	}
-
-	for k := range hs.removedHeaders {
-		delete(hs.removedHeaders, k)
-	}
-
-	for _, v := range hs.values {
-		releaseHeader(v)
-	}
-
-	hs.values = hs.values[:0]
 }
 
 // ParseHeaders parses raw HTTP headers into the headerset.
