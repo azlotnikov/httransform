@@ -4,7 +4,6 @@ import (
 	"crypto/tls"
 	"fmt"
 	"net"
-	"sync"
 
 	"github.com/valyala/fasthttp"
 	"golang.org/x/xerrors"
@@ -22,9 +21,9 @@ type fasthttpHeader interface {
 
 // Server presents a HTTP proxy service.
 type Server struct {
-	serverPool sync.Pool
 	tracerPool *TracerPool
 	server     *fasthttp.Server
+	opts       ServerOpts
 	certs      ca.CA
 	layers     []Layer
 	executor   Executor
@@ -110,11 +109,10 @@ func (s *Server) makeHijackHandler(host string, reqID uint64, user, password []b
 			return
 		}
 
-		srv := s.serverPool.Get().(*fasthttp.Server)
+		srv := makeNewFasthttpServer(&s.opts)
 		srv.Handler = func(ctx *fasthttp.RequestCtx) {
 			s.handleRequest(ctx, true, user, password)
 		}
-		defer s.serverPool.Put(srv)
 
 		srv.ServeConn(tlsConn) // nolint: errcheck
 	}
@@ -232,6 +230,8 @@ func NewServer(opts ServerOpts) (*Server, error) {
 	}
 
 	srv := &Server{
+		server:     makeNewFasthttpServer(&opts),
+		opts:       opts,
 		certs:      certs,
 		executor:   opts.GetExecutor(),
 		layers:     opts.GetLayers(),
@@ -239,23 +239,21 @@ func NewServer(opts ServerOpts) (*Server, error) {
 		metrics:    metrics,
 		tracerPool: opts.GetTracerPool(),
 	}
-	srv.serverPool = sync.Pool{
-		New: func() interface{} {
-			return &fasthttp.Server{
-				Concurrency:                   opts.GetConcurrency(),
-				ReadBufferSize:                opts.GetReadBufferSize(),
-				WriteBufferSize:               opts.GetWriteBufferSize(),
-				ReadTimeout:                   opts.GetReadTimeout(),
-				WriteTimeout:                  opts.GetWriteTimeout(),
-				ReduceMemoryUsage:             true,
-				DisableHeaderNamesNormalizing: true,
-				NoDefaultServerHeader:         true,
-				NoDefaultContentType:          true,
-			}
-		},
-	}
-	srv.server = srv.serverPool.Get().(*fasthttp.Server)
 	srv.server.Handler = srv.mainHandler
 
 	return srv, nil
+}
+
+func makeNewFasthttpServer(opts *ServerOpts) *fasthttp.Server {
+	return &fasthttp.Server{
+		Concurrency:                   opts.GetConcurrency(),
+		ReadBufferSize:                opts.GetReadBufferSize(),
+		WriteBufferSize:               opts.GetWriteBufferSize(),
+		ReadTimeout:                   opts.GetReadTimeout(),
+		WriteTimeout:                  opts.GetWriteTimeout(),
+		ReduceMemoryUsage:             true,
+		DisableHeaderNamesNormalizing: true,
+		NoDefaultServerHeader:         true,
+		NoDefaultContentType:          true,
+	}
 }
