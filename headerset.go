@@ -52,7 +52,6 @@ func (h *Header) String() string {
 // Header name will be "Connection" because we've seen such case in the
 // first place.
 type HeaderSet struct {
-	index          map[string]int
 	values         []*Header
 	removedHeaders map[string]struct{}
 }
@@ -67,10 +66,6 @@ func (hs *HeaderSet) SetString(key, value string) {
 
 // SetBytes is the version of SetString which works with bytes.
 func (hs *HeaderSet) SetBytes(key []byte, value []byte) {
-	if hs.index == nil {
-		hs.index = map[string]int{}
-	}
-
 	if hs.values == nil {
 		hs.values = []*Header{}
 	}
@@ -80,18 +75,11 @@ func (hs *HeaderSet) SetBytes(key []byte, value []byte) {
 	}
 
 	lowerKey := string(bytes.ToLower(key))
-
-	if position, ok := hs.index[lowerKey]; ok {
-		hs.values[position].Value = value
-	} else {
-		newHeader := getHeader()
-		newHeader.ID = lowerKey
-		newHeader.Key = append(newHeader.Key, key...)
-		newHeader.Value = append(newHeader.Value, value...)
-		hs.values = append(hs.values, newHeader)
-		hs.index[lowerKey] = len(hs.values) - 1
-	}
-
+	newHeader := getHeader()
+	newHeader.ID = lowerKey
+	newHeader.Key = append(newHeader.Key, key...)
+	newHeader.Value = append(newHeader.Value, value...)
+	hs.values = append(hs.values, newHeader)
 	delete(hs.removedHeaders, lowerKey)
 }
 
@@ -118,8 +106,10 @@ func (hs *HeaderSet) GetString(key string) (string, bool) {
 		return "", false
 	}
 
-	if pos, ok := hs.index[lowerKey]; ok {
-		return string(hs.values[pos].Value), true
+	for _, v := range hs.values {
+		if string(v.Key) == key {
+			return string(v.Value), true
+		}
 	}
 
 	return "", false
@@ -133,8 +123,10 @@ func (hs *HeaderSet) GetBytes(key []byte) ([]byte, bool) {
 		return nil, false
 	}
 
-	if pos, ok := hs.index[string(key)]; ok {
-		return hs.values[pos].Value, true
+	for _, v := range hs.values {
+		if string(v.Key) == string(key) {
+			return v.Value, true
+		}
 	}
 
 	return nil, false
@@ -168,10 +160,6 @@ func (hs *HeaderSet) String() string {
 
 // Clear drops internal state of the headerset.
 func (hs *HeaderSet) Clear() {
-	for k := range hs.index {
-		delete(hs.index, k)
-	}
-
 	for k := range hs.removedHeaders {
 		delete(hs.removedHeaders, k)
 	}

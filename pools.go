@@ -9,7 +9,6 @@ var (
 	headerSetPool = sync.Pool{
 		New: func() interface{} {
 			return &HeaderSet{
-				index:          map[string]int{},
 				values:         []*Header{},
 				removedHeaders: map[string]struct{}{},
 			}
