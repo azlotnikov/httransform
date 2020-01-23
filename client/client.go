@@ -151,7 +151,9 @@ func (c *Client) cachedTLSConfig(addr string) *tls.Config {
 }
 
 func newClientTLSConfig(addr string) *tls.Config {
-	c := &tls.Config{}
+	c := &tls.Config{
+		InsecureSkipVerify: true,
+	}
 	if c.ClientSessionCache == nil {
 		c.ClientSessionCache = tls.NewLRUClientSessionCache(0)
 	}
