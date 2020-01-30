@@ -166,6 +166,10 @@ func (s *Server) handleRequest(ctx *fasthttp.RequestCtx, isConnect bool, user, p
 		layerTracer.FinishOnRequest(err)
 
 		if err != nil {
+			if IsRejectRequestError(err) {
+				MakeSimpleResponse(&ctx.Response, err.Error(), err.(*RejectRequestError).responseCode)
+				break
+			}
 			MakeSimpleResponse(&ctx.Response, "Internal Server Error", fasthttp.StatusInternalServerError)
 			break
 		}
