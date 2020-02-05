@@ -1,7 +1,6 @@
 package httransform
 
 import (
-	"fmt"
 	"golang.org/x/xerrors"
 )
 
@@ -13,19 +12,19 @@ var (
 )
 
 type RejectRequestError struct {
-	reason       string
+	responseText string
 	responseCode int
 }
 
-func NewRejectRequestError(reason string, responseCode int) *RejectRequestError {
+func NewRejectRequestError(responseText string, responseCode int) *RejectRequestError {
 	return &RejectRequestError{
-		reason:       reason,
+		responseText: responseText,
 		responseCode: responseCode,
 	}
 }
 
 func (r *RejectRequestError) Error() string {
-	return fmt.Sprintf("request blocked with reason %s", r.reason)
+	return r.responseText
 }
 
 func IsRejectRequestError(err error) bool {
