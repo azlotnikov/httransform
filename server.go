@@ -227,18 +227,7 @@ func (s *Server) handleRequest(ctx *fasthttp.RequestCtx, isConnect bool, user, p
 
 	cacheControl := string(ctx.Response.Header.Peek("Cache-Control"))
 	if getMaxAgeValue(cacheControl) > cacheTTL {
-		var body []byte
-		switch string(ctx.Response.Header.Peek("Content-Encoding")) {
-		case "gzip":
-			body, err = ctx.Response.BodyGunzip()
-			if err != nil {
-				return
-			}
-			ctx.Response.Header.Del("Content-Encoding")
-		default:
-			body = ctx.Response.Body()
-		}
-		_ = s.cache.Set(bodyCacheKey, body, cacheTTL)
+		_ = s.cache.Set(bodyCacheKey, ctx.Response.Body(), cacheTTL)
 		_ = s.cache.Set(headerCacheKey, ctx.Response.Header.Header(), cacheTTL)
 	}
 }

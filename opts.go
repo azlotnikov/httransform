@@ -32,8 +32,8 @@ const (
 	// of generated TLS certificates before starting to prune obsoletes.
 	DefaultTLSCertCacheSize = 10000
 
-	// 1G
-	DefaultContentCacheSize = 1024 * 1024 * 1024
+	// 512MB
+	DefaultContentCacheSize = 1024 * 1024 * 512
 )
 
 // ServerOpts is the datastructure to configure Server instance. The
