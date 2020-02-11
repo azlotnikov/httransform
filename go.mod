@@ -1,6 +1,8 @@
 module github.com/9seconds/httransform
 
 require (
+	github.com/cespare/xxhash v1.1.0 // indirect
+	github.com/coocood/freecache v1.1.0
 	github.com/hashicorp/golang-lru v0.5.3
 	github.com/klauspost/compress v1.9.4 // indirect
 	github.com/mccutchen/go-httpbin v0.0.0-20190116014521-c5cb2f4802fa

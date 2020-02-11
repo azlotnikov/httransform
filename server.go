@@ -3,13 +3,14 @@ package httransform
 import (
 	"crypto/tls"
 	"fmt"
-	"net"
-	"sync"
-
+	"github.com/9seconds/httransform/ca"
+	"github.com/coocood/freecache"
 	"github.com/valyala/fasthttp"
 	"golang.org/x/xerrors"
-
-	"github.com/9seconds/httransform/ca"
+	"net"
+	"regexp"
+	"strconv"
+	"sync"
 )
 
 type fasthttpHeader interface {
@@ -30,6 +31,7 @@ type Server struct {
 	executor   Executor
 	logger     Logger
 	metrics    Metrics
+	cache      *freecache.Cache
 }
 
 // Serve starts to work using given listener.
@@ -127,6 +129,7 @@ func (s *Server) handleRequest(ctx *fasthttp.RequestCtx, isConnect bool, user, p
 	methodBytes := ctx.Method()
 	method := string(methodBytes)
 	uri := string(ctx.RequestURI())
+	url := string(ctx.Host()) + uri
 
 	newMethodMetricsValue(s.metrics, methodBytes)
 
@@ -157,6 +160,24 @@ func (s *Server) handleRequest(ctx *fasthttp.RequestCtx, isConnect bool, user, p
 		s.tracerPool.release(layerTracer)
 		releaseLayerState(state)
 	}()
+
+	bodyCacheKey := []byte(url)
+	headerCacheKey := []byte("header_" + url)
+	v, err := s.cache.Get(bodyCacheKey)
+	if err == nil {
+		headers, err2 := s.cache.Get(headerCacheKey)
+		if err2 == nil {
+			if err := ParseHeaders(responseHeaders, headers); err != nil {
+				MakeSimpleResponse(&ctx.Response, "Internal Server Error", fasthttp.StatusInternalServerError)
+				return
+			}
+			ctx.Response.Reset()
+			ctx.Response.SetBody(v)
+			ctx.Response.SetStatusCode(200)
+			s.resetHeaders(&ctx.Response.Header, responseHeaders)
+			return
+		}
+	}
 
 	for ; currentLayer < len(s.layers); currentLayer++ {
 		layerTracer.StartOnRequest()
@@ -203,6 +224,38 @@ func (s *Server) handleRequest(ctx *fasthttp.RequestCtx, isConnect bool, user, p
 	responseCode := ctx.Response.Header.StatusCode()
 	s.resetHeaders(&ctx.Response.Header, responseHeaders)
 	ctx.Response.SetStatusCode(responseCode)
+
+	cacheControl := string(ctx.Response.Header.Peek("Cache-Control"))
+	if getMaxAgeValue(cacheControl) > cacheTTL {
+		var body []byte
+		switch string(ctx.Response.Header.Peek("Content-Encoding")) {
+		case "gzip":
+			body, err = ctx.Response.BodyGunzip()
+			if err != nil {
+				return
+			}
+			ctx.Response.Header.Del("Content-Encoding")
+		default:
+			body = ctx.Response.Body()
+		}
+		_ = s.cache.Set(bodyCacheKey, body, cacheTTL)
+		_ = s.cache.Set(headerCacheKey, ctx.Response.Header.Header(), cacheTTL)
+	}
+}
+
+const cacheTTL = 60 * 60 * 4
+
+var maxAgeRegexp = regexp.MustCompile(`(?i)max-age=(\d+)`)
+
+func getMaxAgeValue(from string) int {
+	matches := maxAgeRegexp.FindStringSubmatch(from)
+	if len(matches) != 2 {
+		return 0
+	}
+
+	val, _ := strconv.Atoi(matches[1])
+
+	return val
 }
 
 func (s *Server) resetHeaders(headers fasthttpHeader, set *HeaderSet) {
@@ -249,6 +302,7 @@ func NewServer(opts ServerOpts) (*Server, error) {
 		logger:     opts.GetLogger(),
 		metrics:    metrics,
 		tracerPool: opts.GetTracerPool(),
+		cache:      freecache.NewCache(opts.GetContentCacheSize()),
 	}
 	srv.serverPool = sync.Pool{
 		New: func() interface{} {

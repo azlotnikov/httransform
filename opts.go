@@ -31,6 +31,9 @@ const (
 	// DefaultTLSCertCacheSize is the number of items we store in LRU cache
 	// of generated TLS certificates before starting to prune obsoletes.
 	DefaultTLSCertCacheSize = 10000
+
+	// 1G
+	DefaultContentCacheSize = 1024 * 1024 * 1024
 )
 
 // ServerOpts is the datastructure to configure Server instance. The
@@ -53,6 +56,9 @@ type ServerOpts struct {
 
 	// ReadTimeout is the timeout server uses to write to the user request.
 	WriteTimeout time.Duration
+
+	// Free cache size
+	ContentCacheSize int
 
 	// CertCA is CA certificate for generating TLS certificate.
 	CertCA []byte
@@ -136,6 +142,14 @@ func (s *ServerOpts) GetWriteTimeout() time.Duration {
 	}
 
 	return s.WriteTimeout
+}
+
+func (s *ServerOpts) GetContentCacheSize() int {
+	if s.ContentCacheSize == 0 {
+		return DefaultContentCacheSize
+	}
+
+	return s.ContentCacheSize
 }
 
 // GetCertCA returns a CA certificate which should be used to generate
